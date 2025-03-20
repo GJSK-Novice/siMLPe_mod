@@ -12,7 +12,7 @@ from utils.logger import get_logger, print_and_log_info
 from utils.pyt_utils import link_file, ensure_dir
 from datasets.h36m_eval import H36MEval
 
-from test import test
+from custom_test import test
 
 import torch
 from torch.utils.data import DataLoader
@@ -24,6 +24,7 @@ parser.add_argument('--exp-name', type=str, default=None, help='=exp name')
 parser.add_argument('--seed', type=int, default=888, help='=seed')
 parser.add_argument('--temporal-only', action='store_true', help='=temporal only')
 parser.add_argument('--layer-norm-axis', type=str, default='spatial', help='=layernorm axis')
+# default is False for 'store_true'
 parser.add_argument('--with-normalization', action='store_true', help='=use layernorm')
 parser.add_argument('--spatial-fc', action='store_true', help='=use only spatial fc')
 parser.add_argument('--num', type=int, default=64, help='=num of blocks')
