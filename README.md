@@ -1,4 +1,6 @@
 # siMLPe
+**This is a modified copy of https://github.com/dulucas/siMLPe for educational purposes**
+
 **Back to MLP: A Simple Baseline for Human Motion Prediction(WACV 2023)** 
 
 A simple-yet-effective network achieving **SOTA** performance.
