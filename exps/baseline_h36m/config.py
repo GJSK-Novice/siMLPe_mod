@@ -91,11 +91,11 @@ C.motion_fc_out.temporal_fc = False
 """RNN Config"""
 C.motion_rnn = edict()
 C.motion_rnn.local_spatial_fc = False
-# recursive_residual = False is better
-C.motion_rnn.recursive_residual = False
+C.motion_rnn.recursive_residual = True
 C.motion_rnn.num_layers = 1
 C.motion_rnn.num_blocks = 1
 C.motion_rnn.with_normalization = False
+C.motion_rnn.use_gru = True
 
 """Train Config"""
 # smaller batch size makes loss instable
