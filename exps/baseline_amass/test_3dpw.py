@@ -46,15 +46,22 @@ def regress_pred(pbar, num_samples, m_p3d_h36):
             num_step = 25 // step + 1
         for idx in range(num_step):
             with torch.no_grad():
-                if config.deriv_input:
+                if config.pre_dct:
                     motion_input_ = motion_input.clone()
                     motion_input_ = torch.matmul(dct_m, motion_input_.cuda())
                     motion_input_ = motion_input_[:, -config.motion.pw3d_input_length:]
                 else:
                     motion_input_ = motion_input.clone()
+                    motion_input_ = motion_input_[:, -config.motion.pw3d_input_length:]
+
                 output = model(motion_input_)
-                output = torch.matmul(idct_m, output)[:, :step, :]
-                if config.deriv_output:
+
+                if config.post_dct:
+                    output = torch.matmul(idct_m, output)[:, :step, :]
+                else:
+                    output = output[:, :step, :]
+
+                if config.residual_output:
                     output = output + motion_input[:, -1:, :].repeat(1,step,1)
 
             output = output.reshape(-1, 18*3)

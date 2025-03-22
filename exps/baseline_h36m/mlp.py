@@ -3,6 +3,9 @@ from torch import nn
 from einops.layers.torch import Rearrange
 
 class LN(nn.Module):
+    # Normalization over the second dimension
+    # spatial if input is [B,C,T]
+    # temporal if input is [B,T,C]
     def __init__(self, dim, epsilon=1e-5):
         super().__init__()
         self.epsilon = epsilon
@@ -19,6 +22,9 @@ class LN(nn.Module):
         return y
 
 class LN_v2(nn.Module):
+    # Normalization over the last dimension
+    # temporal if input is [B,C,T]
+    # spatial if input is [B,T,C]
     def __init__(self, dim, epsilon=1e-5):
         super().__init__()
         self.epsilon = epsilon

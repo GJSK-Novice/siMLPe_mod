@@ -59,14 +59,13 @@ C.motion.pw3d_target_length_train = 25
 C.motion.pw3d_target_length_eval = 25
 
 C.data_aug = True
-C.deriv_input = True
-C.deriv_output = True
+C.residual_output = True
 C.use_relative_loss = True
 
 """ Model Config"""
 ## Network
-C.pre_dct = False
-C.post_dct = False
+C.pre_dct = True
+C.post_dct = True
 ## Motion Network mlp
 dim_ = C.motion.dim
 C.motion_mlp = edict()
@@ -97,8 +96,8 @@ C.motion_fc_out.temporal_fc = False
 C.batch_size = 256
 C.num_workers = 8
 
-C.cos_lr_max=3e-4
-C.cos_lr_min=5e-8
+C.cos_lr_max=1e-5
+C.cos_lr_min=3e-4
 C.cos_lr_total_iters=115000
 
 C.weight_decay = 1e-4

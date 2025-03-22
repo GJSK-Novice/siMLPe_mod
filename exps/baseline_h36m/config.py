@@ -35,8 +35,8 @@ C.val_log_file = C.log_dir + '/val_' + exp_time + '.log'
 C.link_val_log_file = C.log_dir + '/val_last.log'
 
 def add_path(path):
-    if path not in sys.path:
-        sys.path.insert(0, path)
+	if path not in sys.path:
+		sys.path.insert(0, path)
 
 add_path(osp.join(C.root_dir, 'lib'))
 
@@ -54,14 +54,14 @@ C.motion.h36m_target_length_eval = 25
 C.motion.dim = 66
 
 C.data_aug = True
-C.deriv_input = True
-C.deriv_output = True
+C.residual_output = True
 C.use_relative_loss = True
 
 """ Model Config"""
+C.model = 'siMLPe_RNN'
 ## Network
-C.pre_dct = False
-C.post_dct = False
+C.pre_dct = True
+C.post_dct = True
 ## Motion Network mlp
 dim_ = 66
 C.motion_mlp = edict()
@@ -88,12 +88,22 @@ C.motion_fc_out.activation = 'relu'
 C.motion_fc_out.init_w_trunc_normal = True
 C.motion_fc_out.temporal_fc = False
 
+"""RNN Config"""
+C.motion_rnn = edict()
+C.motion_rnn.local_spatial_fc = False
+# recursive_residual = False is better
+C.motion_rnn.recursive_residual = False
+C.motion_rnn.num_layers = 1
+C.motion_rnn.num_blocks = 1
+C.motion_rnn.with_normalization = False
+
 """Train Config"""
+# smaller batch size makes loss instable
 C.batch_size = 256
 C.num_workers = 8
 
-C.cos_lr_max=1e-5
-C.cos_lr_min=5e-8
+C.cos_lr_max=3e-4
+C.cos_lr_min=1e-5
 C.cos_lr_total_iters=40000
 
 C.weight_decay = 1e-4
@@ -106,6 +116,18 @@ C.shift_step = 1
 C.print_every = 100
 C.save_every = 5000
 
+if C.model == 'siMLPe':
+	config.pre_dct = True
+	config.post_dct = True
+	config.residual_output = True
+elif C.model == 'Seq2SeqGRU':
+	config.pre_dct = False
+	config.post_dct = False
+	config.residual_output = False
+elif C.model == 'siMLPe_RNN':
+	config.pre_dct = False
+	config.post_dct = False
+	config.residual_output = False
 
 if __name__ == '__main__':
-    print(config.decoder.motion_mlp)
+	print(config.decoder.motion_mlp)

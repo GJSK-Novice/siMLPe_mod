@@ -33,9 +33,9 @@ idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
 def update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer) :
     if nb_iter > 100000:
-        current_lr = 1e-5
+        current_lr = min_lr
     else:
-        current_lr = 3e-4
+        current_lr = max_lr
 
     for param_group in optimizer.param_groups:
         param_group["lr"] = current_lr
@@ -48,7 +48,7 @@ def gen_velocity(m):
 
 def train_step(amass_motion_input, amass_motion_target, model, optimizer, nb_iter, total_iter, max_lr, min_lr) :
 
-    if config.deriv_input:
+    if config.pre_dct:
         b,n,c = amass_motion_input.shape
         amass_motion_input_ = amass_motion_input.clone()
         amass_motion_input_ = torch.matmul(dct_m, amass_motion_input_.cuda())
@@ -56,11 +56,15 @@ def train_step(amass_motion_input, amass_motion_target, model, optimizer, nb_ite
         amass_motion_input_ = amass_motion_input.clone()
 
     motion_pred = model(amass_motion_input_.cuda())
-    motion_pred = torch.matmul(idct_m, motion_pred)
 
-    if config.deriv_output:
+    if config.post_dct:
+        motion_pred = torch.matmul(idct_m, motion_pred)
+
+    if config.residual_output:
         offset = amass_motion_input[:, -1:].cuda()
         motion_pred = motion_pred[:, :config.motion.amass_target_length] + offset
+    else:
+        motion_pred = motion_pred[:, :config.motion.amass_target_length]
 
     b,n,c = amass_motion_target.shape
     motion_pred = motion_pred.reshape(b,n,18,3).reshape(-1,3)

@@ -44,6 +44,8 @@ config.motion_mlp.spatial_fc_only = args.spatial_fc
 config.motion_mlp.with_normalization = args.with_normalization
 config.motion_mlp.num_layers = args.num
 
+config.motion_rnn.with_normalization = args.with_normalization
+
 acc_log.write(''.join('Seed : ' + str(args.seed) + '\n'))
 
 def get_dct_matrix(N):
@@ -63,9 +65,9 @@ idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
 def update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer) :
     if nb_iter > 30000:
-        current_lr = 1e-5
+        current_lr = min_lr
     else:
-        current_lr = 3e-4
+        current_lr = max_lr
 
     for param_group in optimizer.param_groups:
         param_group["lr"] = current_lr
@@ -78,7 +80,7 @@ def gen_velocity(m):
 
 def train_step(h36m_motion_input, h36m_motion_target, model, optimizer, nb_iter, total_iter, max_lr, min_lr) :
 
-    if config.deriv_input:
+    if config.pre_dct:
         b,n,c = h36m_motion_input.shape
         h36m_motion_input_ = h36m_motion_input.clone()
         h36m_motion_input_ = torch.matmul(dct_m[:, :, :config.motion.h36m_input_length], h36m_motion_input_.cuda())
@@ -86,9 +88,11 @@ def train_step(h36m_motion_input, h36m_motion_target, model, optimizer, nb_iter,
         h36m_motion_input_ = h36m_motion_input.clone()
 
     motion_pred = model(h36m_motion_input_.cuda())
-    motion_pred = torch.matmul(idct_m[:, :config.motion.h36m_input_length, :], motion_pred)
 
-    if config.deriv_output:
+    if config.post_dct:
+        motion_pred = torch.matmul(idct_m[:, :config.motion.h36m_input_length, :], motion_pred)
+
+    if config.residual_output:
         offset = h36m_motion_input[:, -1:].cuda()
         motion_pred = motion_pred[:, :config.motion.h36m_target_length] + offset
     else:
