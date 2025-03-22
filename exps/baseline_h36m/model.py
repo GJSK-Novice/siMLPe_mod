@@ -274,8 +274,20 @@ class SlidingGRU(nn.Module):
         # self.encoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
         # self.decoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
 
-        self.temporal_fc1 = nn.Linear(window_size, window_size)
+        # self.temporal_fc1 = nn.Linear(window_size, window_size)
+        if (config.motion_rnn.num_temp_blocks > 1):
+            self.temporal_fc1 = nn.Sequential(*[
+                nn.Linear(window_size, window_size)
+                for i in range(config.motion_rnn.num_temp_blocks-1)])
+        else:
+            self.temporal_fc1 = nn.Identity()
+
         self.temporal_fc_last = nn.Linear(window_size, 1)
+
+        if config.motion_rnn.local_spatial_fc:
+            self.spatial_fc1 = nn.Linear(window_size, window_size)
+        else:
+            self.spatial_fc1 = nn.Identity()
         self.spatial_fc = nn.Linear(state_size, config.motion.dim)
 
         self.arr0 = Rearrange('b n d -> b d n')
@@ -292,6 +304,8 @@ class SlidingGRU(nn.Module):
         nn.init.constant_(self.temporal_fc1.bias, 0)
         nn.init.xavier_uniform_(self.temporal_fc_last.weight, gain=1e-8)
         nn.init.constant_(self.temporal_fc_last.bias, 0)
+        nn.init.xavier_uniform_(self.spatial_fc1.weight, gain=1e-8)
+        nn.init.constant_(self.spatial_fc1.bias, 0)
         nn.init.xavier_uniform_(self.spatial_fc.weight, gain=1e-8)
         nn.init.constant_(self.spatial_fc.bias, 0)
         
@@ -316,7 +330,9 @@ class SlidingGRU(nn.Module):
 
             # Sliding window
             encoder_window = torch.cat([encoder_window[:, 1:, :], decoder_out], dim=1)
-            _decoder_out = self.temporal_fc1(self.arr0(encoder_window))
+            _decoder_out = encoder_window
+            _decoder_out = self.spatial_fc1(_decoder_out)
+            _decoder_out = self.temporal_fc1(self.arr0(_decoder_out))
             _decoder_out = self.arr0(self.temporal_fc_last(_decoder_out))
             _decoder_out = self.spatial_fc(_decoder_out)
 
@@ -353,7 +369,7 @@ class SlidingRNN(nn.Module):
         # self.encoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
         # self.decoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
 
-        # self.spatial_fc1 = nn.Linear(state_size, state_size)
+        self.temporal_fc1 = nn.Linear(window_size, window_size)
         self.temporal_fc = nn.Linear(window_size, 1)
         self.spatial_fc = nn.Linear(state_size, config.motion.dim)
 
@@ -369,8 +385,8 @@ class SlidingRNN(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        # nn.init.xavier_uniform_(self.spatial_fc1.weight, gain=1e-8)
-        # nn.init.constant_(self.spatial_fc1.bias, 0)
+        nn.init.xavier_uniform_(self.temporal_fc1.weight, gain=1e-8)
+        nn.init.constant_(self.temporal_fc1.bias, 0)
         nn.init.xavier_uniform_(self.temporal_fc.weight, gain=1e-8)
         nn.init.constant_(self.temporal_fc.bias, 0)
         nn.init.xavier_uniform_(self.spatial_fc.weight, gain=1e-8)
@@ -403,8 +419,9 @@ class SlidingRNN(nn.Module):
 
             # Sliding window
             encoder_window = torch.cat([encoder_window[:, 1:, :], decoder_out], dim=1)
-            # _decoder_out = self.spatial_fc1(encoder_window)
-            _decoder_out = self.arr0(self.temporal_fc(self.arr0(encoder_window)))
+            _decoder_out = encoder_window
+            _decoder_out = self.temporal_fc1(self.arr0(_decoder_out))
+            _decoder_out = self.arr0(self.temporal_fc(_decoder_out))
             _decoder_out = self.spatial_fc(_decoder_out)
 
             # _decoder_out = self.arr_deflat(self.spatial_fc(self.arr_flat(encoder_window)))

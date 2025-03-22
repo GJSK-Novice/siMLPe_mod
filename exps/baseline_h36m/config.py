@@ -90,10 +90,11 @@ C.motion_fc_out.temporal_fc = False
 
 """RNN Config"""
 C.motion_rnn = edict()
-C.motion_rnn.local_spatial_fc = False
+C.motion_rnn.local_spatial_fc = True
 C.motion_rnn.recursive_residual = True
 C.motion_rnn.num_layers = 1
 C.motion_rnn.num_blocks = 1
+C.motion_rnn.num_temp_blocks = 1 # must be larger than 1
 C.motion_rnn.with_normalization = False
 C.motion_rnn.use_gru = True
 
@@ -102,7 +103,8 @@ C.motion_rnn.use_gru = True
 C.batch_size = 256
 C.num_workers = 8
 
-C.cos_lr_max=3e-4
+C.cos_lr_max=5e-4
+C.cos_lr_mid=3e-4
 C.cos_lr_min=1e-5
 C.cos_lr_total_iters=40000
 
