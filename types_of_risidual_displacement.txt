@@ -1,0 +1,5 @@
+# Run model with consecutive residuals (predicting velocity between frames)
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python train_mod.py --exp-name res_consecutive.txt --residual-type consecutive --layer-norm-axis spatial --with-normalization --num 48 
+
+# Run model with residuals in DCT space (before IDCT is applied)
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python train_mod.py --exp-name res_before_idct.txt --residual-type before_idct --layer-norm-axis spatial --with-normalization --num 48
