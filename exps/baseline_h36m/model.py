@@ -260,10 +260,10 @@ class Seq2SeqLSTM(nn.Module):
 
         return output_frames
 
-class SlidingRNN(nn.Module):
+class SlidingRNN_v1(nn.Module):
     def __init__(self, config, state_size, num_layers, window_size):
         self.config = copy.deepcopy(config)
-        super(SlidingRNN, self).__init__()
+        super(SlidingRNN_v1, self).__init__()
 
         self.window_size = window_size
         input_size = config.motion.dim
@@ -370,7 +370,7 @@ class siMLPe_mini(nn.Module):
                 seq=concatenated_dim,
                 use_norm=True,
                 use_spatial_fc=False,
-                num_layers=1,
+                num_layers=self.config.motion_rnn.mlp_layers,
                 layernorm_axis='spatial',
             )
 
@@ -404,22 +404,21 @@ class siMLPe_mini(nn.Module):
         return motion_feats
 
 class SlidingRNN_v2(nn.Module):
-    def __init__(self, config, state_size, num_layers, window_size):
+    def __init__(self, config):
         self.config = copy.deepcopy(config)
         super(SlidingRNN_v2, self).__init__()
 
-        self.window_size = window_size
         input_size = config.motion.dim
-        self.mlp_mini = siMLPe_mini(config, window_size, concatenated_dim=window_size+1)
+        self.mlp_mini = siMLPe_mini(config, config.motion_rnn.long_term_window_size, concatenated_dim=config.motion_rnn.long_term_window_size+config.motion_rnn.short_term_window_size)
 
         if config.motion_rnn.use_gru:
-            self.endecoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
+            self.endecoder = nn.GRU(input_size, self.config.motion_rnn.rnn_state_size, self.config.motion_rnn.rnn_layers, batch_first=True)
         else:
             # let encoder and decoder share weights
-            self.endecoder = nn.LSTM(input_size, state_size, num_layers, batch_first=True)
+            self.endecoder = nn.LSTM(input_size, self.config.motion_rnn.rnn_state_size, self.config.motion_rnn.rnn_layers, batch_first=True)
 
         self.arr0 = Rearrange('b n d -> b d n')
-        self.fc_decoder = nn.Linear(state_size, config.motion.dim)
+        self.fc_decoder = nn.Linear(self.config.motion_rnn.rnn_state_size, config.motion.dim)
 
         self.reset_parameters()
 
@@ -441,8 +440,8 @@ class SlidingRNN_v2(nn.Module):
         last_input_frame = x[:, -1:, :]  # Last time step of input as initial input [B, 1, C]
         decoder_input = last_input_frame.clone()
 
-        # size = [B, window_size, state_size]
-        out_frame_window = x[:, -self.window_size:, :]
+        # size = [B, long_term_window_size, self.config.motion_rnn.rnn_state_size]
+        out_window_long_term = x[:, -self.config.motion_rnn.long_term_window_size:, :]
         
         output_frames = torch.zeros(B, T, C).cuda()
         for frame_id in range(T):
@@ -455,7 +454,21 @@ class SlidingRNN_v2(nn.Module):
             # decode [B,1,H] to [B,1,C]
             _decoder_out = decoder_out
             _decoder_out = self.fc_decoder(_decoder_out)
-            mlp_input = torch.cat([out_frame_window, _decoder_out], dim=1)
+
+            if self.config.motion_rnn.short_term_window_size > 1:
+                # generate short term window
+                frame_start_id = frame_id-(self.config.motion_rnn.short_term_window_size-1)
+                if frame_start_id < 0:
+                    if frame_id == 0:
+                        window_short_term_minus_one = x[:, frame_start_id:, :]
+                    else:
+                        window_short_term_minus_one = torch.cat([x[:, frame_start_id:, :], output_frames[:,:frame_id,:]], dim=1)
+                else:
+                    window_short_term_minus_one = output_frames[:, frame_start_id:frame_id, :]
+
+                mlp_input = torch.cat([out_window_long_term, window_short_term_minus_one, _decoder_out], dim=1)
+            else:
+                mlp_input = torch.cat([out_window_long_term, _decoder_out], dim=1)
             
             if self.config.motion_rnn.recursive_residual:
                 # Residual method 1 (recursive residual; same as in 2017 Martinez paper):
@@ -467,8 +480,9 @@ class SlidingRNN_v2(nn.Module):
             output_frames[:, frame_id:frame_id+1, :] = new_frame
             # Next input is current output
             decoder_input = new_frame
-            # Sliding frame window
-            out_frame_window = torch.cat([out_frame_window[:, 1:, :], new_frame], dim=1)
+            if self.config.motion_rnn.sliding_long_term:
+                # Sliding frame window
+                out_window_long_term = torch.cat([out_window_long_term[:, 1:, :], new_frame], dim=1)
 
         return output_frames
 
@@ -491,8 +505,8 @@ class SlidingRNN_v3(nn.Module):
         self.arr0 = Rearrange('b n d -> b d n')
         self.fc_decoder = nn.Linear(state_size, config.motion.dim)
 
-        self.spatial_fc = nn.Linear(config.motion.dim, config.motion.dim)
-        self.temporal_merge_fc = nn.Linear(concatenated_dim, 1)
+        # self.spatial_fc = nn.Linear(config.motion.dim, config.motion.dim)
+        # self.temporal_merge_fc = nn.Linear(concatenated_dim, 1)
         self.arr1 = Rearrange('b d n -> b n d')
 
         self.reset_parameters()
@@ -522,7 +536,8 @@ class SlidingRNN_v3(nn.Module):
                 encoder_out, (rnn_states, cell_states) = self.endecoder(out_window_short_term)
 
             # decode [B,1,H] to [B,1,C]
-            _decoder_out = self.fc_decoder(encoder_out[:,-1:,:])
+            _decoder_out = encoder_out[:,-1:,:]
+            _decoder_out = self.fc_decoder(_decoder_out)
             mlp_input = torch.cat([out_window_long_term, _decoder_out], dim=1)
             
             # mlp_mini
@@ -542,7 +557,9 @@ class SlidingRNN_v3(nn.Module):
             last_rnn_input = new_frame
             # Sliding frame window
             out_window_short_term = torch.cat([out_window_short_term[:, 1:, :], new_frame], dim=1)
-            out_window_long_term = torch.cat([out_window_long_term[:, 1:, :], new_frame], dim=1)
+            if self.config.motion_rnn.sliding_long_term:
+                # Sliding frame window
+                out_window_long_term = torch.cat([out_window_long_term[:, 1:, :], new_frame], dim=1)
 
         return output_frames
 
@@ -576,9 +593,9 @@ class GRU_classic(nn.Module):
         return decoder_out
 
 class siMLPe_RNN(nn.Module):
-    def __init__(self, config, rnn_state_size, rnn_layers, num_blocks, window_size):
+    def __init__(self, config):
         super().__init__()
-        self.rnn = SlidingRNN_v3(config, rnn_state_size, rnn_layers, window_size)
+        self.rnn = SlidingRNN_v2(config)
 
     def forward(self, x):
         _x = self.rnn(x)
