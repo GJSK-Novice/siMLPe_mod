@@ -47,10 +47,10 @@ add_path(osp.join(C.root_dir, 'lib'))
 C.h36m_anno_dir = osp.join(C.root_dir, 'data/h36m/')
 C.motion = edict()
 
-C.motion.h36m_input_length = 50
-C.motion.h36m_input_length_dct = 50
 C.motion.h36m_target_length_train = 10
 C.motion.h36m_target_length_eval = 25
+C.motion.h36m_input_length = C.motion.h36m_target_length_train
+C.motion.h36m_input_length_dct = C.motion.h36m_target_length_train
 C.motion.dim = 66
 
 C.data_aug = True
