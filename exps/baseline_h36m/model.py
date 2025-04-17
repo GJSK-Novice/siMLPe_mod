@@ -259,16 +259,19 @@ class Seq2SeqLSTM(nn.Module):
         return output_frames
 
 
-class SlidingGRU(nn.Module):
+class SlidingRNN(nn.Module):
     def __init__(self, config, state_size, num_layers, window_size):
         self.config = copy.deepcopy(config)
-        super(SlidingGRU, self).__init__()
+        super(SlidingRNN, self).__init__()
 
         self.window_size = window_size
         input_size = config.motion.dim
 
-        # let encoder and decoder share weights
-        self.endecoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
+        if config.motion_rnn.use_gru:
+            self.endecoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
+        else:
+            # let encoder and decoder share weights
+            self.endecoder = nn.LSTM(input_size, state_size, num_layers, batch_first=True)
 
         # let encoder and decoder not share weights
         # self.encoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
@@ -314,93 +317,10 @@ class SlidingGRU(nn.Module):
         assert(C == self.config.motion.dim)
         
         # Encoder: start with zero hidden states
-        encoder_out, rnn_states = self.endecoder(x)  # hidden: [num_layers, B, state_size]
-        
-        # Decoder initialization
-        last_input_frame = x[:, -1:, :]  # Last time step of input as initial input [B, 1, C]
-        decoder_input = last_input_frame.clone()
-
-        # size = [B, window_size, state_size]
-        encoder_window = encoder_out[:, -self.window_size:, :]
-        
-        output_frames = torch.zeros(B, T, C).cuda()
-        for frame_id in range(T):
-            # Decoder: # [B, 1, C]
-            decoder_out, rnn_states = self.endecoder(decoder_input, rnn_states)
-
-            # Sliding window
-            encoder_window = torch.cat([encoder_window[:, 1:, :], decoder_out], dim=1)
-            _decoder_out = encoder_window
-            _decoder_out = self.spatial_fc1(_decoder_out)
-            _decoder_out = self.temporal_fc1(self.arr0(_decoder_out))
-            _decoder_out = self.arr0(self.temporal_fc_last(_decoder_out))
-            _decoder_out = self.spatial_fc(_decoder_out)
-
-            # decoder_out = self.temporal_fc(decoder_out)  # [B, 1, C]
-            # decoder_out = self.fc1(decoder_out) + decoder_out  # [B, 1, C]
-
-            if self.config.motion_rnn.recursive_residual:
-                # Residual method 1 (recursive residual; same as in 2017 Martinez paper):
-                new_frame = self.spatial_norm(_decoder_out) + decoder_input
-            else:
-                # Residual method 2 (residual from the last input frame):
-                new_frame = self.spatial_norm(_decoder_out) + last_input_frame
-
-            output_frames[:, frame_id:frame_id+1, :] = new_frame
-            decoder_input = new_frame  # Next input is current output
-
-        return output_frames
-
-class SlidingRNN(nn.Module):
-    def __init__(self, config, state_size, num_layers, window_size):
-        self.config = copy.deepcopy(config)
-        super(SlidingRNN, self).__init__()
-
-        self.window_size = window_size
-        input_size = config.motion.dim
-
-        if config.motion_rnn.use_gru:
-            self.endecoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
-        else:
-            # let encoder and decoder share weights
-            self.endecoder = nn.LSTM(input_size, state_size, num_layers, batch_first=True)
-
-        # let encoder and decoder not share weights
-        # self.encoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
-        # self.decoder = nn.GRU(input_size, state_size, num_layers, batch_first=True)
-
-        self.temporal_fc1 = nn.Linear(window_size, window_size)
-        self.temporal_fc = nn.Linear(window_size, 1)
-        self.spatial_fc = nn.Linear(state_size, config.motion.dim)
-
-        self.arr0 = Rearrange('b n d -> b d n')
-        # self.arr_flat = Rearrange('b n d -> b (n d)')
-        # self.arr_deflat = Rearrange('b (n d) -> b n d', n=1)
-
-        if config.motion_rnn.with_normalization:
-            self.spatial_norm = mlp.LN_v2(dim=config.motion.dim)
-        else:
-            self.spatial_norm = nn.Identity()
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.xavier_uniform_(self.temporal_fc1.weight, gain=1e-8)
-        nn.init.constant_(self.temporal_fc1.bias, 0)
-        nn.init.xavier_uniform_(self.temporal_fc.weight, gain=1e-8)
-        nn.init.constant_(self.temporal_fc.bias, 0)
-        nn.init.xavier_uniform_(self.spatial_fc.weight, gain=1e-8)
-        nn.init.constant_(self.spatial_fc.bias, 0)
-        
-    def forward(self, x):
-        B, T, C = x.size()
-        assert(C == self.config.motion.dim)
-        
-        # Encoder: start with zero hidden states
         if self.config.motion_rnn.use_gru:
             encoder_out, rnn_states = self.endecoder(x)
         else:
-            encoder_out, (rnn_states, cell_states) = self.endecoder(x)  # hidden: [num_layers, B, state_size]
+            encoder_out, (rnn_states, cell_states) = self.endecoder(x)
         
         # Decoder initialization
         last_input_frame = x[:, -1:, :]  # Last time step of input as initial input [B, 1, C]
@@ -420,14 +340,10 @@ class SlidingRNN(nn.Module):
             # Sliding window
             encoder_window = torch.cat([encoder_window[:, 1:, :], decoder_out], dim=1)
             _decoder_out = encoder_window
+            _decoder_out = self.spatial_fc1(_decoder_out)
             _decoder_out = self.temporal_fc1(self.arr0(_decoder_out))
-            _decoder_out = self.arr0(self.temporal_fc(_decoder_out))
+            _decoder_out = self.arr0(self.temporal_fc_last(_decoder_out))
             _decoder_out = self.spatial_fc(_decoder_out)
-
-            # _decoder_out = self.arr_deflat(self.spatial_fc(self.arr_flat(encoder_window)))
-
-            # decoder_out = self.temporal_fc(decoder_out)  # [B, 1, C]
-            # decoder_out = self.fc1(decoder_out) + decoder_out  # [B, 1, C]
 
             if self.config.motion_rnn.recursive_residual:
                 # Residual method 1 (recursive residual; same as in 2017 Martinez paper):
