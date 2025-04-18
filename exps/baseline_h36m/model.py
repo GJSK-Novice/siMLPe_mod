@@ -112,7 +112,7 @@ class Seq2SeqGRU_simple(nn.Module):
         assert(C == self.config.motion.dim)
         
         # Encoder: start with zero hidden states
-        encoder_out, rnn_states = self.encoder(x)
+        encoder_out, rnn_states = self.encoder(x[:,:-1,:])
 
         # Decoder initialization
         # last_input_frame = x[:, -1:, :]  # Last time step of input as initial input [B, 1, C]
@@ -163,7 +163,7 @@ class Seq2SeqGRU(nn.Module):
         assert(C == self.config.motion.dim)
         
         # Encoder: start with zero hidden states
-        _, rnn_states = self.endecoder(x)
+        _, rnn_states = self.endecoder(x[:,:-1,:])
         
         # Decoder initialization
         last_input_frame = x[:, -1:, :]  # Last time step of input as initial input [B, 1, C]
@@ -232,7 +232,7 @@ class Seq2SeqLSTM(nn.Module):
         assert(C == self.config.motion.dim)
         
         # Encoder: start with zero hidden states
-        _, (hidden_states, cell_states) = self.endecoder(x)
+        _, (hidden_states, cell_states) = self.endecoder(x[:,:-1,:])
         
         # Decoder initialization
         last_input_frame = x[:, -1:, :]  # Last time step of input as initial input [B, 1, C]
@@ -319,9 +319,9 @@ class SlidingRNN_v1(nn.Module):
         
         # Encoder: start with zero hidden states
         if self.config.motion_rnn.use_gru:
-            encoder_out, rnn_states = self.endecoder(x)
+            encoder_out, rnn_states = self.endecoder(x[:,:-1,:])
         else:
-            encoder_out, (rnn_states, cell_states) = self.endecoder(x)
+            encoder_out, (rnn_states, cell_states) = self.endecoder(x[:,:-1,:])
         
         # Decoder initialization
         last_input_frame = x[:, -1:, :]  # Last time step of input as initial input [B, 1, C]
@@ -432,10 +432,10 @@ class SlidingRNN_v2(nn.Module):
         
         # Encoder: start with zero hidden states
         if self.config.motion_rnn.use_gru:
-            encoder_out, rnn_states = self.endecoder(x)
+            encoder_out, rnn_states = self.endecoder(x[:,:-1,:])
         else:
-            encoder_out, (rnn_states, cell_states) = self.endecoder(x)
-        
+            encoder_out, (rnn_states, cell_states) = self.endecoder(x[:,:-1,:])
+
         # Decoder initialization
         last_input_frame = x[:, -1:, :]  # Last time step of input as initial input [B, 1, C]
         decoder_input = last_input_frame.clone()
