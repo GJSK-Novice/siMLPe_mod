@@ -94,14 +94,19 @@ C.motion_rnn.local_spatial_fc = True
 C.motion_rnn.recursive_residual = True
 C.motion_rnn.rnn_layers = 1
 C.motion_rnn.rnn_blocks = 1
-C.motion_rnn.rnn_state_size = config.motion.dim
+# C.motion_rnn.rnn_state_size = config.motion.dim
+C.motion_rnn.rnn_state_size = 99
 C.motion_rnn.num_temp_blocks = 1 # must be larger than 1
-C.motion_rnn.with_normalization = False
+# deprecated
+# C.motion_rnn.with_normalization = False
 C.motion_rnn.use_gru = True
-C.motion_rnn.long_term_window_size = C.motion.h36m_input_length_dct
-C.motion_rnn.short_term_window_size = 3 # must be larger than 1
-C.motion_rnn.sliding_long_term = False
-C.motion_rnn.mlp_layers = 2
+C.motion_rnn.history_window_size = C.motion.h36m_input_length_dct
+C.motion_rnn.encode_history = True
+# must be larger than 1, smaller or equal to C.motion.h36m_input_length_dct
+C.motion_rnn.short_term_window_size = C.motion.h36m_input_length_dct
+# deprecated
+# C.motion_rnn.sliding_long_term = False
+C.motion_rnn.mlp_layers = 6
 
 """Train Config"""
 # smaller batch size makes loss instable
