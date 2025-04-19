@@ -47,10 +47,10 @@ add_path(osp.join(C.root_dir, 'lib'))
 C.h36m_anno_dir = osp.join(C.root_dir, 'data/h36m/')
 C.motion = edict()
 
+C.motion.h36m_input_length = 10
+C.motion.h36m_input_length_dct = C.motion.h36m_input_length
 C.motion.h36m_target_length_train = 10
 C.motion.h36m_target_length_eval = 25
-C.motion.h36m_input_length = C.motion.h36m_target_length_train
-C.motion.h36m_input_length_dct = C.motion.h36m_target_length_train
 C.motion.dim = 66
 
 C.data_aug = True
@@ -106,7 +106,7 @@ C.motion_rnn.encode_history = True
 C.motion_rnn.short_term_window_size = C.motion.h36m_input_length_dct
 # deprecated
 # C.motion_rnn.sliding_long_term = False
-C.motion_rnn.mlp_layers = 6
+C.motion_rnn.mlp_layers = 1
 
 """Train Config"""
 # smaller batch size makes loss instable
@@ -119,6 +119,7 @@ C.cos_lr_min=1e-5
 C.cos_lr_total_iters=40000
 
 C.weight_decay = 1e-4
+# C.model_pth = './log/snapshot/model_LSTM_best.pth'
 C.model_pth = None
 
 """Eval Config"""
