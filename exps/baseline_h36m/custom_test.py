@@ -24,9 +24,10 @@ def get_dct_matrix(N):
     idct_m = np.linalg.inv(dct_m)
     return dct_m, idct_m
 
-dct_m,idct_m = get_dct_matrix(config.motion.h36m_input_length_dct)
-dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
-idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
+if config.pre_dct:
+    dct_m,idct_m = get_dct_matrix(config.motion.h36m_input_length_dct)
+    dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
+    idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
 def regress_pred(model, pbar, num_samples, joint_used_xyz, m_p3d_h36):
     joint_to_ignore = np.array([16, 20, 23, 24, 28, 31]).astype(np.int64)

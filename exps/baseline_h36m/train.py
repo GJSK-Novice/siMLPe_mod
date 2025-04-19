@@ -59,9 +59,10 @@ def get_dct_matrix(N):
     idct_m = np.linalg.inv(dct_m)
     return dct_m, idct_m
 
-dct_m,idct_m = get_dct_matrix(config.motion.h36m_input_length_dct)
-dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
-idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
+if config.pre_dct:
+    dct_m,idct_m = get_dct_matrix(config.motion.h36m_input_length_dct)
+    dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
+    idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
 def update_lr_multistep(nb_iter, total_iter, max_lr, min_lr, optimizer) :
     if nb_iter > 30000:
