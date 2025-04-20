@@ -88,7 +88,7 @@ def test(model, dataloader) :
     titles = np.array(range(config.motion.pw3d_target_length)) + 1
     num_samples = 0
 
-    pbar = tqdm(dataloader)
+    pbar = tqdm(dataloader, desc="Testing on 3DPW")
     m_p3d_h36 = regress_pred(pbar, num_samples, m_p3d_h36)
 
     ret = {}

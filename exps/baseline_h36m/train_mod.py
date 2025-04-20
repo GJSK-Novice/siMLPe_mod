@@ -6,7 +6,8 @@ import numpy as np
 import copy
 
 from config import config
-from model import siMLPe as Model
+import model as models
+# from exps.baseline_h36m.model import siMLPe as Model
 from datasets.h36m import H36MDataset
 from utils.logger import get_logger, print_and_log_info
 from utils.pyt_utils import link_file, ensure_dir

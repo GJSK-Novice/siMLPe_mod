@@ -87,7 +87,7 @@ class AMASSDataset(data.Dataset):
 
     def _load_all(self):
         all_amass_motion_poses = []
-        for amass_motion_name in tqdm(self._amass_file_names):
+        for amass_motion_name in tqdm(self._amass_file_names, desc='Loading AMASS Training Data'):
             amass_info = np.load(amass_motion_name)
             amass_motion_poses = amass_info['poses'] # 156 joints(all joints of SMPL)
             N = len(amass_motion_poses)

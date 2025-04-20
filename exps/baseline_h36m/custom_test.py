@@ -4,7 +4,8 @@ from scipy.spatial.transform import Rotation as R
 
 import numpy as np
 from config  import config
-from model import siMLPe as Model
+import model as models
+# from exps.baseline_h36m.model import siMLPe as Model
 from datasets.h36m_eval import H36MEval
 from utils.misc import rotmat2xyz_torch, rotmat2euler_torch
 

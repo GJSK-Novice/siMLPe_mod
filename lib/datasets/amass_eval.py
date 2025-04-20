@@ -40,7 +40,7 @@ class AMASSEval(data.Dataset):
         assert self._split_name == 'test'
 
         seq_names += open(
-            os.path.join(self._amass_anno_dir, "amass_test.txt"), 'r'
+            os.path.join(self._amass_anno_dir.replace('amass', ''), "amass_test.txt"), 'r'
             ).readlines()
 
         file_list = []
@@ -70,7 +70,7 @@ class AMASSEval(data.Dataset):
         self.amass_seqs = []
         self.data_idx = []
         idx = 0
-        for amass_seq_name in tqdm(self._amass_file_names):
+        for amass_seq_name in tqdm(self._amass_file_names, desc="Loading AMASS Test Data"):
             amass_info = np.load(amass_seq_name)
             amass_motion_poses = amass_info['poses'] # 156 joints(all joints of SMPL)
             N = len(amass_motion_poses)

@@ -48,14 +48,14 @@ C.amass_anno_dir = osp.join(C.root_dir, 'data/amass/')
 C.pw3d_anno_dir = osp.join(C.root_dir, 'data/3dpw/sequenceFiles/')
 C.motion = edict()
 
-C.motion.amass_input_length = 50
-C.motion.amass_input_length_dct = 50
-C.motion.amass_target_length_train = 25
+C.motion.amass_input_length = 10
+C.motion.amass_input_length_dct = C.motion.amass_input_length
+C.motion.amass_target_length_train = 10
 C.motion.amass_target_length_eval = 25
 C.motion.dim = 54
 
-C.motion.pw3d_input_length = 50
-C.motion.pw3d_target_length_train = 25
+C.motion.pw3d_input_length = 10
+C.motion.pw3d_target_length_train = 10
 C.motion.pw3d_target_length_eval = 25
 
 C.data_aug = True
@@ -63,6 +63,7 @@ C.residual_output = True
 C.use_relative_loss = True
 
 """ Model Config"""
+C.model = 'siMLPe_RNN'
 ## Network
 C.pre_dct = True
 C.post_dct = True
@@ -92,12 +93,35 @@ C.motion_fc_out.activation = 'relu'
 C.motion_fc_out.init_w_trunc_normal = True
 C.motion_fc_out.temporal_fc = False
 
+"""RNN Config"""
+C.motion_rnn = edict()
+C.motion_rnn.local_spatial_fc = True
+C.motion_rnn.recursive_residual = True
+C.motion_rnn.rnn_layers = 1
+C.motion_rnn.rnn_blocks = 1
+# C.motion_rnn.rnn_state_size = config.motion.dim
+C.motion_rnn.rnn_state_size = int(config.motion.dim/2*3) # 81
+C.motion_rnn.num_temp_blocks = 1 # must be larger than 1
+# deprecated
+# C.motion_rnn.with_normalization = False
+C.motion_rnn.use_gru = True
+C.motion_rnn.history_window_size = C.motion.amass_input_length
+C.motion_rnn.encode_history = True
+# must be larger than 1, smaller or equal to C.motion.amass_input_length
+# C.motion_rnn.short_term_window_size = C.motion.amass_input_length
+C.motion_rnn.short_term_window_size = 10
+# deprecated
+# C.motion_rnn.sliding_long_term = False
+C.motion_rnn.mlp_layers = 12
+
 """Train Config"""
+# smaller batch size makes loss instable
 C.batch_size = 256
 C.num_workers = 8
 
-C.cos_lr_max=1e-5
-C.cos_lr_min=3e-4
+C.cos_lr_max=5e-4
+C.cos_lr_mid=3e-4
+C.cos_lr_min=1e-5
 C.cos_lr_total_iters=115000
 
 C.weight_decay = 1e-4
@@ -110,6 +134,18 @@ C.shift_step = 5
 C.print_every = 100
 C.save_every = 5000
 
+if C.model == 'siMLPe':
+	config.pre_dct = True
+	config.post_dct = True
+	config.residual_output = True
+elif C.model == 'Seq2SeqGRU':
+	config.pre_dct = False
+	config.post_dct = False
+	config.residual_output = False
+elif C.model == 'siMLPe_RNN':
+	config.pre_dct = False
+	config.post_dct = False
+	config.residual_output = False
 
 if __name__ == '__main__':
     print(config.decoder.motion_mlp)

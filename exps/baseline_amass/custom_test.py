@@ -5,7 +5,8 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 from tqdm import tqdm
 from config  import config
-from model import siMLPe as Model
+# from model import siMLPe as Model
+import model as models
 from utils.misc import rotmat2xyz_torch, rotmat2euler_torch
 from datasets.amass_eval import AMASSEval
 
@@ -29,7 +30,7 @@ dct_m,idct_m = get_dct_matrix(config.motion.amass_input_length)
 dct_m = torch.tensor(dct_m).float().cuda().unsqueeze(0)
 idct_m = torch.tensor(idct_m).float().cuda().unsqueeze(0)
 
-def regress_pred(pbar, num_samples, m_p3d_h36):
+def regress_pred(model, pbar, num_samples, m_p3d_h36):
 
     for (motion_input, motion_target) in pbar:
         motion_input = motion_input.cuda()
@@ -81,14 +82,14 @@ def regress_pred(pbar, num_samples, m_p3d_h36):
     m_p3d_h36 = m_p3d_h36 / num_samples
     return m_p3d_h36
 
-def test(model, dataloader) :
+def test(config, model, dataloader) :
 
     m_p3d_h36 = np.zeros([config.motion.amass_target_length])
     titles = np.array(range(config.motion.amass_target_length)) + 1
     num_samples = 0
 
-    pbar = tqdm(dataloader)
-    m_p3d_h36 = regress_pred(pbar, num_samples, m_p3d_h36)
+    pbar = tqdm(dataloader,desc="Testing on AMASS")
+    m_p3d_h36 = regress_pred(model, pbar, num_samples, m_p3d_h36)
 
     ret = {}
     for j in range(config.motion.amass_target_length):
@@ -102,7 +103,14 @@ if __name__ == "__main__":
     parser.add_argument('--model-pth', type=str, default=None, help='=encoder path')
     args = parser.parse_args()
 
-    model = Model(config)
+    if config.model == 'siMLPe':
+        model = models.siMLPe(config)
+    elif config.model == 'siMLPe_RNN':
+        model = models.SlidingRNN_v2(config)
+    elif config.model == 'Seq2SeqGRU':
+        model = models.Seq2SeqGRU(config)
+
+    # model = Model(config)
 
     state_dict = torch.load(args.model_pth)
     model.load_state_dict(state_dict, strict=True)
@@ -119,5 +127,5 @@ if __name__ == "__main__":
                             num_workers=1, drop_last=False,
                             sampler=sampler, shuffle=shuffle, pin_memory=True)
 
-    test(model, dataloader)
+    test(config, model, dataloader)
 

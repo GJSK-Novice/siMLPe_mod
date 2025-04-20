@@ -62,7 +62,7 @@ class PW3DEval(data.Dataset):
         self.data_idx = []
         idx = 0
         sample_rate = int(60 // 25)
-        for pw3d_seq_name in tqdm(self._pw3d_file_names):
+        for pw3d_seq_name in tqdm(self._pw3d_file_names, desc='Loading PW3D Test Data'):
             pw3d_info = pkl.load(open(pw3d_seq_name, 'rb'), encoding='latin1')
             pw3d_motion_poses = pw3d_info['poses_60Hz']
             for i in range(len(pw3d_motion_poses)):
